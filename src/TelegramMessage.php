@@ -85,6 +85,20 @@ class TelegramMessage {
                 $this->_token = $value;
                 $method = null;
             break;
+
+            case 'text':
+                $parse_mode = Arr::get ($this->_params, 'parse_mode');
+
+                switch ($parse_mode) :
+                    case 'HTML':
+                        $value = htmlspecialchars ($value, ENT_QUOTES);
+                    break;
+                    case 'MarkdownV2':
+                        $value = str_replace ([".", "\n"], ["\.", chr(10)], $value);
+                    break;
+                endswitch;
+
+            break;
         }
 
         if ( ! empty ($method)) {
@@ -104,9 +118,7 @@ class TelegramMessage {
             throw new \InvalidArgumentException ('Token not specified');
         }
 
-        $endpoint = sprintf (TelegramMessage::ENDPOINT, $this->_token);
-
-        $request = CurlClient::post($endpoint, $this->_params)
+        $request = CurlClient::post(sprintf (TelegramMessage::ENDPOINT, $this->_token), $this->_params)
                         ->json()
                         ->user_agent(TelegramMessage::UA)
                         ->accept('gzip', 'json');
