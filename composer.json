@@ -1,0 +1,25 @@
+{
+    "name": "appzz/telegram-message",
+    "description": "Send telegram message via bot and curlclient library",
+    "type": "library",
+    "keywords": [
+        "telegram", "message", "bot", "api", "curl"
+    ],
+    "homepage": "https://github.com/a-pp-zz/telegram-message/",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "CoolSwitcher",
+            "email": "ds@appzz.pw",
+            "role": "lead"
+        }
+    ],
+    "require": {
+        "php": ">=5.6",
+        "appzz/arr": "1.*",
+        "appzz/curl-client": "3.*"
+    },
+    "autoload": {
+        "psr-4": {"AppZz\\Http\\": "src/"}
+    }
+}
