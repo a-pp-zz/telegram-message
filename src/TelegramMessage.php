@@ -22,9 +22,10 @@ class TelegramMessage {
         'token',
         'chat_id',
         'text',
-        'html',
         'markdown',
-        'silent'
+        'silent',
+        'title',
+        'raw_text'
     ];
 
 	public function __construct ($token = NULL, $chat_id = NULL)
@@ -71,11 +72,6 @@ class TelegramMessage {
                 $value = (bool)$value;
             break;
 
-            case 'html':
-                $method = 'parse_mode';
-                $value = 'HTML';
-            break;
-
             case 'markdown':
                 $method = 'parse_mode';
                 $value = 'MarkdownV2';
@@ -87,17 +83,26 @@ class TelegramMessage {
             break;
 
             case 'text':
+            case 'title':
                 $parse_mode = Arr::get ($this->_params, 'parse_mode');
+                $asterix = '';
 
                 switch ($parse_mode) :
-                    case 'HTML':
-                        $value = htmlspecialchars ($value, ENT_QUOTES);
-                    break;
                     case 'MarkdownV2':
-                        $value = str_replace ([".", "\n"], ["\.", chr(10)], $value);
+                        $asterix = '*';
+                        $value = $this->escape_text ($value);
                     break;
                 endswitch;
 
+            if ($method == 'title') :
+                $method = null;
+                $this->_params['text'] = "{$asterix}{$value}{$asterix}\n{$this->_params['text']}";
+            endif;
+
+            break;
+
+            case 'raw_text' :
+                $method = 'text';
             break;
         }
 
@@ -106,6 +111,17 @@ class TelegramMessage {
         }
 
         return $this;
+    }
+
+    public function escape_text ($text = '')
+    {
+        $parse_mode = Arr::get ($this->_params, 'parse_mode');
+
+        if ($parse_mode == 'MarkdownV2') {
+            $text = str_replace (["\n", "_", "*", "[", "]", "(", ")", "~", "`", ">", "#", "+", "-", "=", "|", "{", "}", ".", "!"], [chr(10), "\_", "\*", "\[", "\]", "\(", "\)", "\~", "\`", "\>", "\#", "\+", "\-", "\=", "\|", "\{", "\}", "\.", "\!"], $text);
+        }
+
+        return $text;
     }
 
     public function send ()
