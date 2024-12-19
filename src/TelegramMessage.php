@@ -13,6 +13,8 @@ class TelegramMessage {
 
     private $_params;
     private $_token;
+    private $_title;
+    private $_text;
 
     /**
      * Allowed methods
@@ -22,10 +24,11 @@ class TelegramMessage {
         'token',
         'chat_id',
         'text',
-        'markdown',
+        'markdown', //depracated, always on
         'silent',
         'title',
-        'raw_text'
+        'raw_text',
+        'url'
     ];
 
 	public function __construct ($token = NULL, $chat_id = NULL)
@@ -37,6 +40,10 @@ class TelegramMessage {
         if ( ! empty ($token)) {
             $this->_token = $token;
         }
+
+        $this->_text = [];
+        $this->_title = '';
+        $this->_params['parse_mode'] = 'MarkdownV2';
 	}
 
     public static function factory ($token = NULL, $chat_id = NULL)
@@ -73,8 +80,7 @@ class TelegramMessage {
             break;
 
             case 'markdown':
-                $method = 'parse_mode';
-                $value = 'MarkdownV2';
+                $method = null;
             break;
 
             case 'token':
@@ -82,23 +88,18 @@ class TelegramMessage {
                 $method = null;
             break;
 
-            case 'text':
             case 'title':
-                $parse_mode = Arr::get ($this->_params, 'parse_mode');
-                $asterix = '';
-
-                switch ($parse_mode) :
-                    case 'MarkdownV2':
-                        $asterix = '*';
-                        $value = $this->escape_text ($value);
-                    break;
-                endswitch;
-
-            if ($method == 'title') :
                 $method = null;
-                $this->_params['text'] = "{$asterix}{$value}{$asterix}\n{$this->_params['text']}";
-            endif;
+                $this->_title = $value;
+            break;
 
+            case 'text':
+                $this->_text[] = $this->escape_text ($value);
+            break;
+
+            case 'url':
+                $value2 = Arr::get($params, 1);
+                $this->_text[] = sprintf ('[%s](%s)', $this->escape_text ($value2), $this->escape_text ($value));
             break;
 
             case 'raw_text' :
@@ -115,13 +116,7 @@ class TelegramMessage {
 
     public function escape_text ($text = '')
     {
-        $parse_mode = Arr::get ($this->_params, 'parse_mode');
-
-        if ($parse_mode == 'MarkdownV2') {
-            $text = str_replace (["\n", "_", "*", "[", "]", "(", ")", "~", "`", ">", "#", "+", "-", "=", "|", "{", "}", ".", "!"], [chr(10), "\_", "\*", "\[", "\]", "\(", "\)", "\~", "\`", "\>", "\#", "\+", "\-", "\=", "\|", "\{", "\}", "\.", "\!"], $text);
-        }
-
-        return $text;
+        return str_replace (["\n", "_", "*", "[", "]", "(", ")", "~", "`", ">", "#", "+", "-", "=", "|", "{", "}", ".", "!"], [chr(10), "\_", "\*", "\[", "\]", "\(", "\)", "\~", "\`", "\>", "\#", "\+", "\-", "\=", "\|", "\{", "\}", "\.", "\!"], $text);
     }
 
     public function send ()
@@ -134,6 +129,22 @@ class TelegramMessage {
             throw new \InvalidArgumentException ('Token not specified');
         }
 
+        $message = '';
+
+        if ( ! empty ($this->_title)) {
+            $message .= '*' . $this->escape_text ($this->_title) . "*\n";
+        }
+
+        foreach ($this->_text as $num=>$txt) {
+            $message .= $txt;
+
+            if ($num !== (count($this->_text)-1)) {
+                $message .= $this->escape_text ("\n");
+            }
+        }
+
+        $this->_params['text'] = $message;
+
         $request = CurlClient::post(sprintf (TelegramMessage::ENDPOINT, $this->_token), $this->_params)
                         ->json()
                         ->user_agent(TelegramMessage::UA)
@@ -143,6 +154,8 @@ class TelegramMessage {
         $ret = new \stdClass;
         $ret->response = $response->get_status();
         $ret->result = $response->get_body();
+
+        unset ($this->_params);
         return $ret;
     }
 }
